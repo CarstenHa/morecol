@@ -1,0 +1,80 @@
+#!/bin/bash
+
+# Hinweis:
+# Bei (sehr) einfachen Aufgaben (keine Kommandos!) kann auch xargs anstelle dieses Programms verwendet werden:
+# Bsp.: echo "1 2 3 4 5 6 7 8 9" | xargs -n 3
+
+usage() {
+cat <<EOU
+
+Skript, um die Zeilen einer Datei in einer bestimmten Anzahl von Spalten aufzuteilen und formatiert anzuzeigen.
+
+S0 [-c NUM] [-f FILE] [-h] [-w NUM]
+
+Optionen:
+
+   -c NUM
+
+	Anzahl der Spalten für die Ausgabe. Default-Wert ist 2
+
+   -f FILE
+
+	Name der Eingabedatei.
+	Es wird immer versucht, zuerst von STDIN zu lesen.
+
+   -h
+
+	ruft diese Hilfe auf.
+
+   -w NUM
+
+	Anzahl der Zeichen für die Spaltenbreite. Default-Wert ist 30
+
+EOU
+}
+
+while getopts c:f:hw: opt; do
+ case "$opt" in
+  c) anzcol="$OPTARG"
+     [[ ! "$anzcol" =~ ^[0-9]*$ || "$anzcol" -le 1 ]] && anzcol=2
+  ;;
+  f) filename="$OPTARG"
+  ;;
+  h) usage
+     exit
+  ;;
+  w) colwidth="$OPTARG"
+     [[ ! "$colwidth" =~ ^[0-9]*$ || "$colwidth" == 0 ]] && colwidth=30
+  ;;
+ esac
+done
+
+# *** Überprüfungen ***
+
+# Überprüfung,falls Eingabe von der Pipe kommt.
+if [ -p /dev/stdin ]; then
+ tmpcontent=$(mktemp)
+ cat >"${tmpcontent}"
+ filename="$tmpcontent"
+fi
+
+while [ ! -f "$filename" ]; do
+ read -p "Bitte einen gültigen Dateinamen eingeben: " filename
+done
+
+# Standardwerte werden belegt, wenn keine Optionen angegeben wurden.
+[ -z "$anzcol" ] && anzcol=2
+[ -z "$colwidth" ] && colwidth=30
+
+linecounter=0
+while read -r lines; do 
+ printf '%-*s' "${colwidth}" "$lines"
+ let linecounter++
+ if [ "$linecounter" == "$anzcol" ]; then
+  printf '\n'
+  linecounter=0
+ fi
+done <"$filename"
+
+# Abschließender Zeilenumbruch wird ggf. eingefügt.
+[ "$linecounter" != 0 ] && printf '\n'
